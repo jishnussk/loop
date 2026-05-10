@@ -1,0 +1,38 @@
+name: Android-RDP-Live
+on: 
+  workflow_dispatch:
+    inputs:
+      authcode:
+        description: 'Enter Google CRD Windows PowerShell Code'
+        required: true
+      pincode:
+        description: 'Six digit Pin'
+        required: true
+
+jobs:
+  Build-Android-Phone:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Setup Android Emulator & CRD
+      shell: pwsh
+      run: |
+        # This runs your setup script (provided below)
+        ./setup_android.ps1
+      continue-on-error: true
+
+    - name: Start CRD
+      run: ${{ github.event.inputs.authcode }} -pin=${{ github.event.inputs.pincode }}
+
+    - name: Keep Alive Loop
+      shell: pwsh
+      run: |
+        Write-Host "RDP is Live. Connect at https://remotedesktop.google.com/access"
+        $i = 0
+        while($i -lt 360) { # 6 hour limit
+          Write-Host "Session active... Minute: $i"
+          Start-Sleep -Seconds 60
+          $i++
+        }
