@@ -43,11 +43,11 @@ jobs:
             "platform-tools" \
             "emulator" \
             "platforms;android-37" \
-            "system-images;android-37;google_apis;x86_64"
+            "system-images;android-36;google_apis;x86_64"
 
           echo "no" | avdmanager create avd \
             -n AndroidPhone \
-            -k "system-images;android-37;google_apis;x86_64" \
+            -k "system-images;android-36;google_apis;x86_64" \
             --force
 
       - name: Start Chrome Remote Desktop and Emulator
