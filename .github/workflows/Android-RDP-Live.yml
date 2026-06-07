@@ -23,14 +23,18 @@ jobs:
           sudo apt update
           sudo apt install -y wget unzip openjdk-17-jdk
 
-      - name: Install Android SDK (command line tools)
+      - name: Install Android SDK (FIXED)
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
+
           cd $HOME/android-sdk
 
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip commandlinetools-linux-11076708_latest.zip
-          mv cmdline-tools cmdline-tools/latest
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+
+          unzip -q commandlinetools-linux-11076708_latest.zip
+
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
 
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
