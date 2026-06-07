@@ -31,8 +31,8 @@ jobs:
         # Check if KVM is available (it should be on Ubuntu-latest)
         kvm-ok
         sudo apt install -y sdkmanager
-        sdkmanager --install "system-images;android-30;google_apis;x86_64" "emulator" "platform-tools"
-        echo "no" | avdmanager create avd -n "AndroidPhone" -k "system-images;android-30;google_apis;x86_64"
+        sdkmanager --install "system-images;android-37;google_apis;x86_64" "emulator" "platform-tools"
+        echo "no" | avdmanager create avd -n "AndroidPhone" -k "system-images;android-37;google_apis;x86_64"
 
     - name: Start CRD and Phone
       run: |
