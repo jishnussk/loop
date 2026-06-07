@@ -18,11 +18,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install base dependencies
+      - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y wget unzip openjdk-17-jdk xfce4 desktop-base
 
+      # ===================== ANDROID SDK SETUP =====================
       - name: Install Android SDK
         run: |
           export ANDROID_SDK_ROOT=$HOME/android-sdk
@@ -40,6 +41,7 @@ jobs:
           echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
           echo "$ANDROID_SDK_ROOT/emulator" >> $GITHUB_PATH
 
+      # ===================== SDK PACKAGES =====================
       - name: Install SDK packages
         run: |
           yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
@@ -50,31 +52,37 @@ jobs:
             "platforms;android-34" \
             "system-images;android-34;google_apis;x86_64"
 
-      - name: Create AVD (FIXED PATH)
+      # ===================== CREATE AVD (FIXED) =====================
+      - name: Create AVD
         run: |
-          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          mkdir -p $HOME/.android/avd
 
-          echo "no" | avdmanager --sdk_root $ANDROID_SDK_ROOT create avd \
+          yes | avdmanager \
+            --sdk_root $ANDROID_SDK_ROOT \
+            create avd \
             -n AndroidPhone \
             -k "system-images;android-34;google_apis;x86_64" \
             --device "pixel"
 
-          ls -R ~/.android/avd || true
+          echo "===== AVD LIST ====="
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/avdmanager list avd || true
+          ls -la $HOME/.android/avd || true
 
+      # ===================== START EMULATOR =====================
       - name: Start emulator
         run: |
-          export ANDROID_SDK_ROOT=$HOME/android-sdk
-
           nohup $ANDROID_SDK_ROOT/emulator/emulator \
             -avd AndroidPhone \
             -no-audio \
             -no-boot-anim \
             -gpu swiftshader_indirect \
             -no-snapshot \
-            -wipe-data &
+            -wipe-data \
+            -show-kernel &
 
-          sleep 60
+          sleep 90
 
+      # ===================== CHROME REMOTE DESKTOP =====================
       - name: Start Chrome Remote Desktop
         run: |
           wget https://dl.google.com/linux/direct/chrome-remote-desktop_current_amd64.deb
@@ -82,5 +90,6 @@ jobs:
 
           ${{ github.event.inputs.authcode }} --pin=${{ github.event.inputs.pincode }}
 
+      # ===================== KEEP RUNNER ALIVE =====================
       - name: Keep alive
         run: sleep 21600
