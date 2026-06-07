@@ -1,45 +1,76 @@
 name: Android-Linux-Fast
-on: 
-  workflow_dispatch:
-    inputs:
-      authcode:
-        description: 'Enter Google CRD Linux (Debian) Code'
-        required: true
-      pincode:
-        description: 'Six digit Pin'
-        required: true
+
+on:
+workflow_dispatch:
+inputs:
+authcode:
+description: 'Enter Google CRD Linux (Debian) Code'
+required: true
+pincode:
+description: 'Six digit Pin'
+required: true
 
 jobs:
-  Build-Android:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+Android-Linux-Fast:
+runs-on: ubuntu-latest
 
-    - name: Install Desktop and CRD
-      run: |
-        sudo apt update
-        # Install a lightweight desktop (XFCE) and CRD
-        sudo apt install -y xfce4 desktop-base xfce4-goodies
-        wget https://dl.google.com/linux/direct/chrome-remote-desktop_current_amd64.deb
-        sudo apt install -y ./chrome-remote-desktop_current_amd64.deb
-        
-    - name: Setup Android Emulator
-      run: |
-        # Install Android tools and system images
-        sudo apt install -y cpu-checker
-        # Check if KVM is available (it should be on Ubuntu-latest)
-        kvm-ok
-        sudo apt install -y sdkmanager
-        sdkmanager --install "system-images;android-37;google_apis;x86_64" "emulator" "platform-tools"
-        echo "no" | avdmanager create avd -n "AndroidPhone" -k "system-images;android-37;google_apis;x86_64"
+```
+steps:
+  - name: Checkout
+    uses: actions/checkout@v4
 
-    - name: Start CRD and Phone
-      run: |
-        # Start the CRD service using your code
-        ${{ github.event.inputs.authcode }} --pin=${{ github.event.inputs.pincode }}
-        # Start the emulator inside the virtual display
-        DISPLAY=:0 emulator -avd AndroidPhone -no-audio -no-boot-anim -gpu host &
-        
-    - name: Keep Alive
-      run: sleep 21600 # 6 hours
+  - name: Install Desktop and Chrome Remote Desktop
+    run: |
+      sudo apt update
+      sudo apt install -y xfce4 desktop-base xfce4-goodies wget
+
+      wget -q https://dl.google.com/linux/direct/chrome-remote-desktop_current_amd64.deb
+      sudo apt install -y ./chrome-remote-desktop_current_amd64.deb
+
+  - name: Setup Android SDK and Emulator
+    run: |
+      sudo apt update
+      sudo apt install -y \
+        cpu-checker \
+        google-android-cmdline-tools-13.0-installer
+
+      kvm-ok || true
+
+      export ANDROID_SDK_ROOT=/usr/lib/android-sdk
+      export ANDROID_HOME=/usr/lib/android-sdk
+      export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator
+
+      yes | sdkmanager --licenses
+
+      sdkmanager --install \
+        "platform-tools" \
+        "emulator" \
+        "platforms;android-37" \
+        "system-images;android-37;google_apis;x86_64"
+
+      echo "no" | avdmanager create avd \
+        -n AndroidPhone \
+        -k "system-images;android-37;google_apis;x86_64" \
+        --force
+
+  - name: Start Chrome Remote Desktop and Emulator
+    run: |
+      export ANDROID_SDK_ROOT=/usr/lib/android-sdk
+      export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator
+
+      ${{ github.event.inputs.authcode }} --pin=${{ github.event.inputs.pincode }}
+
+      nohup emulator \
+        -avd AndroidPhone \
+        -no-audio \
+        -no-boot-anim \
+        -gpu swiftshader_indirect \
+        -no-snapshot \
+        >/tmp/emulator.log 2>&1 &
+
+      adb wait-for-device
+
+  - name: Keep Alive
+    run: |
+      sleep 21600
+```
