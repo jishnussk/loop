@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       authcode:
+        description: 'Chrome Remote Desktop Auth Code'
         required: true
-        description: "CRD code"
       pincode:
+        description: '6-digit PIN'
         required: true
-        description: "PIN"
 
 jobs:
-  android:
+  Build-Android:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,62 +21,54 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y wget unzip cpu-checker xfce4 xfce4-goodies desktop-base
+          sudo apt install -y wget unzip openjdk-17-jdk
 
-          wget -q https://dl.google.com/linux/direct/chrome-remote-desktop_current_amd64.deb
-          sudo apt install -y ./chrome-remote-desktop_current_amd64.deb
-
-      - name: Install Android SDK (FIXED)
+      - name: Install Android SDK (command line tools)
         run: |
-          sudo apt update
-          sudo apt install -y google-android-cmdline-tools-13.0-installer
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk
 
-      - name: Setup SDK + Emulator (NO NULL ERRORS)
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip commandlinetools-linux-11076708_latest.zip
+          mv cmdline-tools cmdline-tools/latest
+
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+
+      - name: Accept licenses + install SDK packages
         run: |
-          set -e
+          yes | sdkmanager --sdk_root=$HOME/android-sdk --licenses
 
-          export ANDROID_SDK_ROOT=/usr/lib/android-sdk
-          export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator
-
-          # Force refresh SDK repository (IMPORTANT FIX)
-          sdkmanager --sdk_root=$ANDROID_SDK_ROOT --update
-
-          # Accept ALL licenses (critical fix for your earlier errors)
-          yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
-
-          # Install stable Android 36 components
-          sdkmanager --sdk_root=$ANDROID_SDK_ROOT --install \
+          sdkmanager --sdk_root=$HOME/android-sdk \
             "platform-tools" \
             "emulator" \
-            "platforms;android-36" \
-            "system-images;android-36;google_apis;x86_64"
+            "platforms;android-34" \
+            "system-images;android-34;google_apis;x86_64"
 
-          # VERIFY image actually exists (THIS PREVENTS YOUR NULL ERROR)
-          sdkmanager --sdk_root=$ANDROID_SDK_ROOT --list | grep "system-images;android-36;google_apis;x86_64"
-
-          # ONLY create AVD if install succeeded
+      - name: Create Android Virtual Device
+        run: |
           echo "no" | avdmanager create avd \
             -n AndroidPhone \
-            -k "system-images;android-36;google_apis;x86_64" \
-            --force
+            -k "system-images;android-34;google_apis;x86_64" \
+            --device "pixel"
 
-      - name: Start CRD + Emulator
+      - name: Start emulator
         run: |
-          export ANDROID_SDK_ROOT=/usr/lib/android-sdk
-          export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator
-
-          ${{ github.event.inputs.authcode }} --pin=${{ github.event.inputs.pincode }}
-
-          nohup emulator \
+          nohup $HOME/android-sdk/emulator/emulator \
             -avd AndroidPhone \
             -no-audio \
             -no-boot-anim \
-            -gpu swiftshader_indirect \
-            -accel on \
-            -no-snapshot \
-            >/tmp/emulator.log 2>&1 &
+            -gpu swiftshader_indirect &
+          sleep 30
 
-          adb wait-for-device
+      - name: Start Chrome Remote Desktop
+        run: |
+          sudo apt install -y xfce4 desktop-base
+          wget https://dl.google.com/linux/direct/chrome-remote-desktop_current_amd64.deb
+          sudo apt install -y ./chrome-remote-desktop_current_amd64.deb
 
-      - name: Keep Alive
+          ${{ github.event.inputs.authcode }} --pin=${{ github.event.inputs.pincode }}
+
+      - name: Keep alive
         run: sleep 21600
