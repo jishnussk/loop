@@ -1,76 +1,71 @@
 name: Android-Linux-Fast
 
 on:
-workflow_dispatch:
-inputs:
-authcode:
-description: 'Enter Google CRD Linux (Debian) Code'
-required: true
-pincode:
-description: 'Six digit Pin'
-required: true
+  workflow_dispatch:
+    inputs:
+      authcode:
+        description: "Enter Google CRD Linux (Debian) Code"
+        required: true
+      pincode:
+        description: "Six digit Pin"
+        required: true
 
 jobs:
-Android-Linux-Fast:
-runs-on: ubuntu-latest
+  android-linux-fast:
+    runs-on: ubuntu-latest
 
-```
-steps:
-  - name: Checkout
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  - name: Install Desktop and Chrome Remote Desktop
-    run: |
-      sudo apt update
-      sudo apt install -y xfce4 desktop-base xfce4-goodies wget
+      - name: Install Desktop and Chrome Remote Desktop
+        run: |
+          sudo apt update
+          sudo apt install -y xfce4 desktop-base xfce4-goodies wget
 
-      wget -q https://dl.google.com/linux/direct/chrome-remote-desktop_current_amd64.deb
-      sudo apt install -y ./chrome-remote-desktop_current_amd64.deb
+          wget -q https://dl.google.com/linux/direct/chrome-remote-desktop_current_amd64.deb
+          sudo apt install -y ./chrome-remote-desktop_current_amd64.deb
 
-  - name: Setup Android SDK and Emulator
-    run: |
-      sudo apt update
-      sudo apt install -y \
-        cpu-checker \
-        google-android-cmdline-tools-13.0-installer
+      - name: Setup Android SDK and Emulator
+        run: |
+          sudo apt update
+          sudo apt install -y cpu-checker google-android-cmdline-tools-13.0-installer
 
-      kvm-ok || true
+          kvm-ok || true
 
-      export ANDROID_SDK_ROOT=/usr/lib/android-sdk
-      export ANDROID_HOME=/usr/lib/android-sdk
-      export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator
+          export ANDROID_SDK_ROOT=/usr/lib/android-sdk
+          export ANDROID_HOME=/usr/lib/android-sdk
+          export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator
 
-      yes | sdkmanager --licenses
+          yes | sdkmanager --licenses
 
-      sdkmanager --install \
-        "platform-tools" \
-        "emulator" \
-        "platforms;android-37" \
-        "system-images;android-37;google_apis;x86_64"
+          sdkmanager --install \
+            "platform-tools" \
+            "emulator" \
+            "platforms;android-37" \
+            "system-images;android-37;google_apis;x86_64"
 
-      echo "no" | avdmanager create avd \
-        -n AndroidPhone \
-        -k "system-images;android-37;google_apis;x86_64" \
-        --force
+          echo "no" | avdmanager create avd \
+            -n AndroidPhone \
+            -k "system-images;android-37;google_apis;x86_64" \
+            --force
 
-  - name: Start Chrome Remote Desktop and Emulator
-    run: |
-      export ANDROID_SDK_ROOT=/usr/lib/android-sdk
-      export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator
+      - name: Start Chrome Remote Desktop and Emulator
+        run: |
+          export ANDROID_SDK_ROOT=/usr/lib/android-sdk
+          export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator
 
-      ${{ github.event.inputs.authcode }} --pin=${{ github.event.inputs.pincode }}
+          ${{ github.event.inputs.authcode }} --pin=${{ github.event.inputs.pincode }}
 
-      nohup emulator \
-        -avd AndroidPhone \
-        -no-audio \
-        -no-boot-anim \
-        -gpu swiftshader_indirect \
-        -no-snapshot \
-        >/tmp/emulator.log 2>&1 &
+          nohup emulator \
+            -avd AndroidPhone \
+            -no-audio \
+            -no-boot-anim \
+            -gpu swiftshader_indirect \
+            -no-snapshot \
+            >/tmp/emulator.log 2>&1 &
 
-      adb wait-for-device
+          adb wait-for-device
 
-  - name: Keep Alive
-    run: |
-      sleep 21600
-```
+      - name: Keep Alive
+        run: sleep 21600
