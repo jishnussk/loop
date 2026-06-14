@@ -13,7 +13,7 @@ on:
 jobs:
   Run-PSScriptAnalyzer-on-Windows:
     name: Run PSScriptAnalyzer on Windows
-    runs-on: windows-latest
+    runs-on: windows-2022
     # Add an ID here to reference the job's outputs
     outputs:
       zip_filename: ${{ steps.keep_alive_step.outputs.zip_filename }}
